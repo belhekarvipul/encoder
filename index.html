@@ -8,13 +8,13 @@
 <style>
     * {
         box-sizing: border-box;
-        font-family: Arial, sans-serif;
     }
 
     body {
+        font-family: Arial, sans-serif;
         background: #f4f6f9;
-        padding: 30px;
         margin: 0;
+        padding: 30px;
     }
 
     .container {
@@ -26,32 +26,34 @@
         box-shadow: 0 2px 10px rgba(0,0,0,.1);
     }
 
-    h2 {
-        margin-top: 0;
+    h2,h3 {
         color: #333;
     }
 
     textarea {
         width: 100%;
-        height: 140px;
+        min-height: 220px;
+        resize: vertical;
         padding: 12px;
         border: 1px solid #ccc;
         border-radius: 6px;
-        resize: vertical;
-        margin-bottom: 15px;
+        font-family: Consolas, monospace;
+        font-size: 14px;
     }
 
     .btn-group {
-        margin-bottom: 20px;
+        margin: 15px 0;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
     }
 
     button {
-        padding: 10px 18px;
         border: none;
+        padding: 10px 16px;
         border-radius: 6px;
-        cursor: pointer;
-        margin-right: 10px;
         color: white;
+        cursor: pointer;
         font-weight: bold;
     }
 
@@ -67,16 +69,14 @@
         background: #ff8c00;
     }
 
-    pre {
-        background: #f7f7f7;
-        padding: 15px;
-        border-radius: 6px;
-        overflow: auto;
-        border: 1px solid #ddd;
+    .clear-btn {
+        background: #666;
     }
 
-    .json-container {
-        margin-top: 20px;
+    .status {
+        margin-top: 10px;
+        font-size: 14px;
+        color: green;
     }
 
     table {
@@ -85,9 +85,11 @@
         margin-top: 15px;
     }
 
-    th, td {
+    th,
+    td {
         border: 1px solid #ddd;
         padding: 10px;
+        vertical-align: top;
         text-align: left;
     }
 
@@ -96,17 +98,20 @@
         color: white;
     }
 
-    .copy-value {
-        background: #28a745;
-        color: white;
-        padding: 6px 10px;
-        border-radius: 4px;
+    td pre {
+        margin: 0;
+        white-space: pre-wrap;
+        word-break: break-word;
     }
 
-    .status {
-        color: green;
-        font-size: 14px;
-        margin-top: 10px;
+    .copy-value {
+        background: #28a745;
+        padding: 6px 10px;
+        font-size: 12px;
+    }
+
+    .json-container {
+        margin-top: 25px;
     }
 </style>
 </head>
@@ -116,75 +121,131 @@
 
     <h2>Double Encode / Decode Tool</h2>
 
-    <label><strong>Input Text</strong></label>
-    <textarea id="inputText" placeholder="Enter text or JSON..."></textarea>
+    <label><strong>Input / Output</strong></label>
+    <textarea id="textArea"
+        placeholder="Paste plain text, JSON, or encoded content here..."></textarea>
 
     <div class="btn-group">
-        <button class="encode-btn" onclick="doubleEncode()">Double Encode</button>
-        <button class="decode-btn" onclick="doubleDecode()">Double Decode</button>
+        <button class="encode-btn" onclick="doubleEncode()">Encode</button>
+        <button class="decode-btn" onclick="doubleDecode()">Decode</button>
+        <button class="copy-btn" onclick="copyText()">Copy Result</button>
+        <button class="clear-btn" onclick="clearAll()">Clear</button>
     </div>
 
-    <h3>Encoded Result</h3>
-    <pre id="encodedOutput"></pre>
+    <div id="status" class="status"></div>
 
     <div class="json-container">
-        <h3>Decoded JSON Result</h3>
+        <h3>Decoded JSON View</h3>
         <div id="jsonOutput"></div>
     </div>
-
-    <div class="status" id="status"></div>
 
 </div>
 
 <script>
+
+function showStatus(message, isError = false) {
+    const status = document.getElementById("status");
+    status.textContent = message;
+    status.style.color = isError ? "red" : "green";
+}
+
+function unicodeToBase64(str) {
+    return btoa(unescape(encodeURIComponent(str)));
+}
+
+function base64ToUnicode(str) {
+    return decodeURIComponent(escape(atob(str)));
+}
+
 function doubleEncode() {
-    const input = document.getElementById("inputText").value;
 
     try {
-        const encoded = btoa(unescape(encodeURIComponent(input)));
-        const doubleEncoded = btoa(encoded);
 
-        document.getElementById("encodedOutput").textContent = doubleEncoded;
-        document.getElementById("status").textContent = "Double encoding completed.";
+        const textarea = document.getElementById("textArea");
+
+        const firstPass = unicodeToBase64(textarea.value);
+        const secondPass = btoa(firstPass);
+
+        textarea.value = secondPass;
+
+        document.getElementById("jsonOutput").innerHTML = "";
+
+        showStatus("Content encoded successfully.");
+
     } catch (e) {
-        document.getElementById("status").textContent =
-            "Encoding failed: " + e.message;
+        showStatus("Encoding failed: " + e.message, true);
     }
 }
 
 function doubleDecode() {
-    const input = document.getElementById("inputText").value.trim();
 
     try {
-        const firstDecode = atob(input);
-        const secondDecode = atob(firstDecode);
 
-        const text = decodeURIComponent(escape(secondDecode));
+        const textarea = document.getElementById("textArea");
+        const encodedValue = textarea.value.trim();
 
-        let jsonData;
+        const firstDecode = atob(encodedValue);
+        const secondDecode = base64ToUnicode(firstDecode);
+
+        textarea.value = secondDecode;
 
         try {
-            jsonData = JSON.parse(text);
+            const jsonData = JSON.parse(secondDecode);
             renderJsonTable(jsonData);
         } catch {
             document.getElementById("jsonOutput").innerHTML =
-                "<pre>" + escapeHtml(text) + "</pre>";
+                "<p>Decoded content is not valid JSON.</p>";
         }
 
-        document.getElementById("status").textContent =
-            "Double decoding completed.";
+        showStatus("Content decoded successfully.");
+
     } catch (e) {
-        document.getElementById("status").textContent =
-            "Decoding failed: " + e.message;
+        showStatus("Decoding failed: " + e.message, true);
     }
+}
+
+function copyText() {
+
+    const value = document.getElementById("textArea").value;
+
+    if (!value) {
+        showStatus("Nothing to copy.", true);
+        return;
+    }
+
+    navigator.clipboard.writeText(value)
+        .then(() => {
+            showStatus("Content copied successfully.");
+        })
+        .catch(err => {
+            showStatus("Copy failed: " + err, true);
+        });
+}
+
+function clearAll() {
+
+    document.getElementById("textArea").value = "";
+    document.getElementById("jsonOutput").innerHTML = "";
+    showStatus("Cleared.");
+}
+
+function copyValue(value) {
+
+    navigator.clipboard.writeText(value)
+        .then(() => {
+            showStatus("Value copied successfully.");
+        })
+        .catch(err => {
+            showStatus("Copy failed: " + err, true);
+        });
 }
 
 function renderJsonTable(data) {
 
-    const container = document.getElementById("jsonOutput");
+    const output = document.getElementById("jsonOutput");
 
     if (typeof data !== "object" || data === null) {
-        container.innerHTML = "<pre>" + escapeHtml(String(data)) + "</pre>";
+        output.innerHTML = "<pre>" + escapeHtml(String(data)) + "</pre>";
         return;
     }
 
@@ -194,7 +255,7 @@ function renderJsonTable(data) {
                 <tr>
                     <th>Key</th>
                     <th>Value</th>
-                    <th>Copy</th>
+                    <th>Action</th>
                 </tr>
             </thead>
             <tbody>
@@ -202,18 +263,20 @@ function renderJsonTable(data) {
 
     Object.entries(data).forEach(([key, value]) => {
 
-        const valueText =
-            typeof value === "object"
+        const valueText = typeof value === "object"
             ? JSON.stringify(value, null, 2)
             : String(value);
 
         html += `
             <tr>
                 <td>${escapeHtml(key)}</td>
-                <td><pre style="margin:0">${escapeHtml(valueText)}</pre></td>
                 <td>
-                    <button class="copy-value"
-                        onclick="copyValue(${JSON.stringify(valueText)})">
+                    <pre>${escapeHtml(valueText)}</pre>
+                </td>
+                <td>
+                    <button
+                        class="copy-value"
+                        onclick='copyValue(${JSON.stringify(valueText)})'>
                         Copy Value
                     </button>
                 </td>
@@ -226,25 +289,19 @@ function renderJsonTable(data) {
         </table>
     `;
 
-    container.innerHTML = html;
+    output.innerHTML = html;
 }
 
-function copyValue(value) {
-    navigator.clipboard.writeText(value)
-        .then(() => {
-            document.getElementById("status").textContent =
-                "Value copied successfully.";
-        });
-}
+function escapeHtml(text) {
 
-function escapeHtml(str) {
-    return str
+    return text
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#039;");
 }
+
 </script>
 
 </body>
